@@ -1,0 +1,54 @@
+apply plugin: 'kotlin-platform-js'
+
+sourceSets {
+    main.resources.srcDirs += ['../common/src/main/resources']
+    test.resources.srcDirs += ['../common/src/test/resources']
+}
+
+dependencies {
+    expectedBy project(":kvitaemu-common")
+
+    compile "com.soywiz:dynarek-js:$dynarekVersion"
+    compile "com.soywiz:klogger-js:$kloggerVersion"
+    compile "com.soywiz:klock-js:$klockVersion"
+    compile "com.soywiz:korag-js:$koragVersion"
+    compile "com.soywiz:korim-js:$korimVersion"
+    compile "com.soywiz:korau-js:$korauVersion"
+    compile "com.soywiz:korau-atrac3plus-js:$korauAtrac3plusVersion"
+    compile "com.soywiz:korio-js:$korioVersion"
+    compile "com.soywiz:korge-js:$korgeVersion"
+    compile "com.soywiz:korui-js:$koruiVersion"
+    compile "com.soywiz:krypto-js:$kryptoVersion"
+}
+
+// Cause problems with mocha (but required for browser)
+///*
+compileKotlin2Js {
+    kotlinOptions.outputFile = "${projectDir}/web/kvitaemu.js"
+    kotlinOptions.sourceMap = false
+}
+//*/
+
+clean {
+    delete new File("${projectDir}/web")
+}
+
+compileKotlin2Js.doLast {
+    configurations.compile.each { File file ->
+        copy {
+            includeEmptyDirs = false
+
+            from zipTree(file.absolutePath)
+            into "${projectDir}/web"
+            include { fileTreeElement ->
+                def path = fileTreeElement.path
+                (path.endsWith(".js") || path.endsWith(".js.map")) && (path.startsWith("META-INF/resources/") || !path.startsWith("META-INF/"))
+            }
+        }
+    }
+
+    copy {
+        from sourceSets.main.resources.srcDirs
+        into "${projectDir}/web"
+    }
+}

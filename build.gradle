@@ -1,0 +1,151 @@
+import org.apache.tools.ant.taskdefs.condition.Os
+
+buildscript {
+    ext.dynarekVersion = "0.3.0"
+    ext.kloggerVersion = "0.3.0"
+    ext.klockVersion = "0.3.0"
+    ext.kryptoVersion = '0.3.0'
+    ext.korauAtrac3plusVersion = '0.3.0'
+    ext.koragVersion = "0.18.0"
+    ext.korauVersion = "0.18.0"
+    ext.korioVersion = "0.18.0"
+    ext.korgeVersion = "0.18.0"
+    //ext.korgeVersion = "0.18.1-SNAPSHOT"
+    ext.korimVersion = "0.18.0"
+    ext.koruiVersion = "0.18.0"
+    ext.kotlinVersion = '1.2.0'
+
+    repositories {
+        jcenter()
+        maven { url "https://plugins.gradle.org/m2/" }
+        mavenLocal()
+    }
+
+    dependencies {
+        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlinVersion"
+    }
+}
+
+allprojects {
+    repositories {
+        mavenLocal()
+        jcenter()
+        mavenLocal()
+    }
+
+    group 'com.soywiz'
+    version '0.4.0-SNAPSHOT'
+
+    if (project == rootProject) {
+        def file = new File(rootProject.rootDir, "kvitaemu/common/src/main/kotlin/com/soywiz/kvitaemu/KvitaemuVersion.kt")
+        file.parentFile.mkdirs()
+        file.write("package com.soywiz.kvitaemu\n\ninternal val KVITAEMU_VERSION = \"$version\"")
+    }
+
+    apply plugin: 'java'
+    apply plugin: 'maven'
+    apply plugin: 'signing'
+    apply plugin: 'maven-publish'
+    apply plugin: 'idea'
+
+    it.afterEvaluate {
+        if (it.plugins.hasPlugin("kotlin-platform-common")) {
+            dependencies {
+                compile "org.jetbrains.kotlin:kotlin-stdlib-common:$kotlinVersion"
+                testCompile "org.jetbrains.kotlin:kotlin-test-common:$kotlinVersion"
+                testCompile "org.jetbrains.kotlin:kotlin-test-annotations-common:$kotlinVersion"
+            }
+
+            kotlin {
+                experimental { coroutines 'enable' }
+            }
+        }
+        if (it.plugins.hasPlugin("kotlin-platform-jvm") || it.plugins.hasPlugin("kotlin")) {
+            dependencies {
+                compile "org.jetbrains.kotlin:kotlin-stdlib:$kotlinVersion"
+                testCompile "org.jetbrains.kotlin:kotlin-test:$kotlinVersion"
+                testCompile "org.jetbrains.kotlin:kotlin-test-junit:$kotlinVersion"
+                testCompile "junit:junit:4.12"
+            }
+
+            kotlin {
+                experimental { coroutines 'enable' }
+            }
+
+            compileJava.options.encoding = 'UTF-8'
+            compileTestJava.options.encoding = 'UTF-8'
+
+            sourceCompatibility = 1.8
+            targetCompatibility = 1.8
+        }
+
+        // https://discuss.kotlinlang.org/t/unit-testing-in-kotlin-js/3943
+        // https://github.com/JetBrains/kotlin-examples/blob/5e883a6d67afc8b8aeb8991af6a7b6183be2213f/gradle/js-tests/mocha/build.gradle
+        if (it.plugins.hasPlugin("kotlin-platform-js") || it.plugins.hasPlugin("kotlin2js")) {
+            dependencies {
+                compile "org.jetbrains.kotlin:kotlin-stdlib-js:$kotlinVersion"
+                testCompile "org.jetbrains.kotlin:kotlin-test-js:$kotlinVersion"
+            }
+
+            kotlin {
+                experimental { coroutines 'enable' }
+            }
+
+            [compileKotlin2Js, compileTestKotlin2Js]*.configure {
+                kotlinOptions.moduleKind = "umd"
+                kotlinOptions.sourceMap = true
+            }
+
+            task populateNodeModules(type: Copy, dependsOn: compileKotlin2Js) {
+                from compileKotlin2Js.destinationDir
+
+                configurations.compile.each {
+                    from zipTree(it.absolutePath).matching { include '*.js' }
+                }
+
+                configurations.testCompile.each {
+                    from zipTree(it.absolutePath).matching { include '*.js' }
+                }
+
+                into "${buildDir}/node_modules"
+            }
+
+            task runMocha(type: Task, dependsOn: [compileTestKotlin2Js, populateNodeModules]) {
+                doLast {
+                    File fileOut = new File(compileTestKotlin2Js.outputFile)
+
+                    if (fileOut.exists()) {
+                        String[] cmd
+                        if (Os.isFamily(Os.FAMILY_WINDOWS)) {
+                            cmd = ["cmd", "/c", "mocha.cmd" as String, fileOut]
+                        } else {
+                            cmd = ["/bin/bash", '-c', "mocha '${fileOut}'"]
+                        }
+                        def directory = new File("$buildDir/node_modules")
+
+                        ProcessBuilder pb = new ProcessBuilder(cmd as String[])
+                        pb.environment().putAll(System.getenv())
+                        pb.directory(directory)
+                        def p = pb.start()
+                        p.in.eachLine { println(it) }
+                        p.err.eachLine { System.err.println(it) }
+                        if (p.waitFor() != 0) {
+                            throw new GradleException('error occurred running "' + cmd.join(" ") + '" at "' + directory + '"')
+                        }
+                    }
+                }
+            }
+
+            // test.dependsOn runMocha // @TODO: Hangs!
+        }
+    }
+
+}
+
+apply plugin: 'idea'
+
+idea {
+    module {
+        excludeDirs += [file('psplibdoc'), file('gradle'), file('kvitaemu/js/web')]
+    }
+}

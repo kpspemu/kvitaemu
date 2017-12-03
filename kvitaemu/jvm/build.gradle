@@ -1,0 +1,43 @@
+apply plugin: 'kotlin-platform-jvm'
+apply plugin: 'application'
+
+sourceSets {
+    main.resources.srcDirs += ['../common/src/main/resources']
+    test.resources.srcDirs += ['../common/src/test/resources']
+}
+
+dependencies {
+    expectedBy project(":kvitaemu-common")
+
+    compile "com.soywiz:dynarek:$dynarekVersion"
+    compile "com.soywiz:klogger:$kloggerVersion"
+    compile "com.soywiz:klock:$klockVersion"
+    compile "com.soywiz:korag:$koragVersion"
+    compile "com.soywiz:korim:$korimVersion"
+    compile "com.soywiz:korau:$korauVersion"
+    compile "com.soywiz:korau-atrac3plus:$korauAtrac3plusVersion"
+    compile "com.soywiz:korio:$korioVersion"
+    compile "com.soywiz:korge:$korgeVersion"
+    compile "com.soywiz:korui:$koruiVersion"
+    compile "com.soywiz:krypto:$kryptoVersion"
+}
+
+mainClassName = 'com.soywiz.kvitaemu.MainKt'
+
+task runApp(type: JavaExec) {
+    classpath = sourceSets.main.runtimeClasspath
+
+    main = mainClassName
+
+    // arguments to pass to the application
+    workingDir rootProject.rootDir
+}
+
+jar {
+    manifest {
+        attributes("Main-Class": mainClassName)
+    }
+    from {
+        configurations.compile.collect { it.isDirectory() ? it : zipTree(it) }
+    }
+}
