@@ -11,8 +11,8 @@ import kotlin.test.assertEquals
 class DecodeTest {
 	@Test
 	fun name() {
-		assertEquals("PUSH", ArmTables.decode(true, "90B5".hexReader)?.name)
-		assertEquals("PUSH", ArmTables.decode(true, "2DE9F041".hexReader)?.name)
+		assertEquals("PUSH", SlowInstructionDecoder.decode(true, "90B5".hexReader)?.name)
+		assertEquals("PUSH", SlowInstructionDecoder.decode(true, "2DE9F041".hexReader)?.name)
 	}
 
 	val String.hexStream: SyncStream get() = this.fromHexString().openSync()
