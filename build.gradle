@@ -48,6 +48,10 @@ allprojects {
     apply plugin: 'maven-publish'
     apply plugin: 'idea'
 
+    if (project == rootProject) {
+        apply plugin: 'kotlin'
+    }
+
     it.afterEvaluate {
         if (it.plugins.hasPlugin("kotlin-platform-common")) {
             dependencies {
