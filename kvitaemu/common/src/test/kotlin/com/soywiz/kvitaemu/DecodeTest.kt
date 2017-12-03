@@ -13,6 +13,7 @@ class DecodeTest {
 	fun name() {
 		assertEquals("PUSH", SlowInstructionDecoder.decode(true, "90B5".hexReader)?.name)
 		assertEquals("PUSH", SlowInstructionDecoder.decode(true, "2DE9F041".hexReader)?.name)
+		assertEquals("SUB", SlowInstructionDecoder.decode(true, "94B0".hexReader)?.name)
 	}
 
 	val String.hexStream: SyncStream get() = this.fromHexString().openSync()
