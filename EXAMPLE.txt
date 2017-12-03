@@ -1,0 +1,47 @@
+A8.6.97 MOV (register)
+
+Move (register) copies a value from a register to the destination register. It can optionally update the
+condition flags based on the value.
+
+Encoding T1
+
+MOV<c> <Rd>, <Rm>
+
+15 14 13 12 11 10  9  8  7  6  5  4  3  2  1  0
+ 0  1  0  0  0  1  1  0  D  ----Rm----  ---Rd--
+
+d = UInt(D:Rd); m = UInt(Rm);  setflags = FALSE;
+if d == 15 && InITBlock() && !LastInITBlock() then UNPREDICTABLE;
+
+--------------------------------
+
+class Thumb1pI<dag oops, dag iops, AddrMode am, int sz,
+               InstrItinClass itin,
+               string opc, string asm, string cstr, list<dag> pattern>
+  : InstThumb<am, sz, IndexModeNone, ThumbFrm, GenericDomain, cstr, itin> {
+  let OutOperandList = oops;
+  let InOperandList = !con(iops, (ins pred:$p));
+  let AsmString = !strconcat(opc, "${p}", asm);
+  let Pattern = pattern;
+  list<Predicate> Predicates = [IsThumb, IsThumb1Only];
+}
+
+def IIC_iMOVr      : InstrItinClass;
+
+// A6.2.3 Special data instructions and branch and exchange encoding.
+class T1Special<bits<4> opcode> : Encoding16 {
+  let Inst{15-10} = 0b010001;
+  let Inst{9-6}   = opcode;
+}
+
+def tMOVr : Thumb1pI<(outs GPR:$Rd), (ins GPR:$Rm), AddrModeNone,
+                      2, IIC_iMOVr,
+                      "mov", "\t$Rd, $Rm", "", []>,
+                  T1Special<{1,0,?,?}> {
+  // A8.6.97
+  bits<4> Rd;
+  bits<4> Rm;
+  let Inst{7}   = Rd{3};
+  let Inst{6-3} = Rm;
+  let Inst{2-0} = Rd{2-0};
+}
